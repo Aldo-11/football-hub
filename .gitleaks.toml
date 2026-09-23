@@ -1,0 +1,12 @@
+title = "Football Hub Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Permitir archivos de ejemplo y configuraciones públicas"
+paths = [
+  '''^\.env\.example$''',
+  '''package-lock\.json$''',
+  '''tests/.*'''
+]
