@@ -1,71 +1,78 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from './context/AuthContext';
-import { Navbar } from './components/Navbar';
+import { useClub } from './context/ClubContext';
+import { Navbar, TABS } from './components/Navbar';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { TeamSelect } from './pages/TeamSelect';
 import { Dashboard } from './pages/Dashboard';
+import { Analysis } from './pages/Analysis';
+import { Simulation } from './pages/Simulation';
+import { Compare } from './pages/Compare';
+import { Club } from './pages/Club';
 import { Predictions } from './pages/Predictions';
 import { Leaderboard } from './pages/Leaderboard';
+import { Loading, ErrorState } from './components/ui';
+
+const PAGES = { dashboard: Dashboard, analysis: Analysis, simulation: Simulation, compare: Compare, club: Club, predictions: Predictions, leaderboard: Leaderboard };
+const VALID = new Set([...TABS.map((t) => t.id), 'team-select']);
+
+// La pestaña se refleja en la URL (#analysis) para poder recargar o compartir
+const tabFromHash = () => {
+  const t = window.location.hash.replace('#', '');
+  return VALID.has(t) ? t : 'dashboard';
+};
 
 export const App = () => {
   const { user, loading } = useAuth();
-  const [authView, setAuthView] = useState('login'); // 'login' | 'register'
-  const [currentTab, setCurrentTab] = useState('dashboard'); // 'dashboard' | 'predictions' | 'leaderboard' | 'team-select'
+  const clubState = useClub();
+  const [authView, setAuthView] = useState('login');
+  const [tab, setTab] = useState(tabFromHash);
+
+  useEffect(() => {
+    const onHash = () => setTab(tabFromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  const selectTab = (t) => {
+    setTab(t);
+    if (window.location.hash !== `#${t}`) window.history.replaceState(null, '', `#${t}`);
+  };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-pitch flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-2 border-led border-t-transparent animate-spin rounded-none mb-4"></div>
-        <span className="font-scoreboard tracking-widest text-led uppercase text-sm">
-          Cargando Football Hub...
-        </span>
-      </div>
-    );
+    return <div className="min-h-screen bg-pitch flex items-center justify-center"><Loading label="Cargando Football Hub…" /></div>;
   }
 
-  // Si no está autenticado
   if (!user) {
-    return authView === 'login' ? (
-      <Login onSwitchToRegister={() => setAuthView('register')} />
-    ) : (
-      <Register onSwitchToLogin={() => setAuthView('login')} />
-    );
+    return authView === 'login'
+      ? <Login onSwitchToRegister={() => setAuthView('register')} />
+      : <Register onSwitchToLogin={() => setAuthView('login')} />;
   }
 
-  // Si no ha seleccionado equipo favorito todavía
-  if (!user.favoriteTeamId || currentTab === 'team-select') {
-    return (
-      <div>
-        <Navbar currentTab={currentTab} onSelectTab={setCurrentTab} />
-        <TeamSelect onComplete={() => setCurrentTab('dashboard')} />
-      </div>
-    );
+  if (clubState.loading) {
+    return <div className="min-h-screen bg-pitch flex items-center justify-center"><Loading label="Cargando clubes…" /></div>;
   }
+  if (clubState.error) {
+    return <div className="min-h-screen bg-pitch flex items-center justify-center"><ErrorState error={clubState.error} onRetry={clubState.reload} /></div>;
+  }
+
+  const needsClub = !clubState.club || tab === 'team-select';
+  const Page = PAGES[tab] || Dashboard;
 
   return (
     <div className="min-h-screen bg-pitch text-main flex flex-col">
-      <Navbar currentTab={currentTab} onSelectTab={setCurrentTab} />
-
+      <Navbar currentTab={tab} onSelectTab={selectTab} />
       <main className="flex-1">
-        {currentTab === 'dashboard' && (
-          <Dashboard onNavigateToPredictions={() => setCurrentTab('predictions')} />
-        )}
-        {currentTab === 'predictions' && <Predictions />}
-        {currentTab === 'leaderboard' && <Leaderboard />}
+        {needsClub
+          ? <TeamSelect onComplete={() => selectTab('dashboard')} />
+          // key: al cambiar de club se remonta la página y no quedan datos del club anterior
+          : <Page key={clubState.club.id} />}
       </main>
-
-      {/* Stadium Footer */}
-      <footer className="border-t border-hairline bg-surface py-6 text-center text-xs font-mono text-muted">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Football Hub © 2026/2027 — Matchday Intelligence Engine</span>
-          <div className="flex items-center space-x-3 text-[10px] text-muted uppercase">
-            <span>Fuente: football-data.org</span>
-            <span>•</span>
-            <span>Modelo: Poisson</span>
-            <span>•</span>
-            <span>BFF Architecture</span>
-          </div>
+      <footer className="border-t border-hairline bg-surface py-4 text-center text-[11px] font-mono text-muted">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1">
+          <span>Football Hub · proyecto académico · temporada en curso</span>
+          <span>Datos deportivos: ESPN · Análisis, modelos y alertas: Football Hub</span>
         </div>
       </footer>
     </div>

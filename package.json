@@ -7,8 +7,12 @@
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "start": "node backend/server.js",
-    "test": "npm test --prefix backend",
-    "build": "npm run build --prefix frontend"
+    "test": "npm test --prefix backend && npm test --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
+    "test:e2e": "npm run test:e2e --prefix backend",
+    "audit": "npm audit --audit-level=high && npm audit --prefix backend --audit-level=high && npm audit --prefix frontend --audit-level=high",
+    "install:all": "npm ci && npm ci --prefix backend && npm ci --prefix frontend"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
