@@ -19,7 +19,10 @@ export const StandingsTable = ({ standings, competitionName, userTeamId }) => {
             {competitionName || 'Clasificación Oficial'}
           </h3>
         </div>
-        <span className="text-[10px] font-mono text-muted uppercase tracking-widest">Temporada Regular</span>
+        <span className="text-[10px] font-mono text-win uppercase tracking-widest font-semibold flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-win animate-pulse"></span>
+          Temporada 2026/2027 • En Curso
+        </span>
       </div>
 
       {/* Real Table with Hairlines */}

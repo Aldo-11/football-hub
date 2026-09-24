@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 const dotenv = require('dotenv');
 
 // Cargar .env desde la raíz del proyecto
@@ -12,6 +12,7 @@ const config = {
   footballDataKey: process.env.FOOTBALL_DATA_KEY || '',
   rapidApiKey: process.env.RAPIDAPI_KEY || '',
   rapidApiHost: process.env.RAPIDAPI_HOST || 'sportapi7.p.rapidapi.com',
+  footballDataIoKey: process.env.FOOTBALLDATA_IO_KEY || '',
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET || 'fallback_access_secret_for_dev_32char_min',
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret_for_dev_32char_min',
   jwtAccessExpiresIn: '15m',

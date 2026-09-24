@@ -1,4 +1,5 @@
 import React from 'react';
+import { ShieldAlert, CheckCircle2, TrendingUp, AlertTriangle, Zap, Target } from 'lucide-react';
 
 export const PoissonBar = ({ prediction }) => {
   if (!prediction) {
@@ -9,30 +10,35 @@ export const PoissonBar = ({ prediction }) => {
     );
   }
 
-  const { probabilities, lambda, mostLikelyScore, overUnder25, teams } = prediction;
+  const { probabilities, lambda, mostLikelyScore, overUnder25, teams, automatedDecisions } = prediction;
   const homeWin = probabilities?.homeWin || 0;
   const draw = probabilities?.draw || 0;
   const awayWin = probabilities?.awayWin || 0;
 
+  const rosterDecision = automatedDecisions?.rosterPenalty;
+  const intensityDecision = automatedDecisions?.intensity;
+  const valueBetDecision = automatedDecisions?.valueBet;
+  const confidenceDecision = automatedDecisions?.confidence;
+
   return (
-    <div className="border border-hairline bg-surface p-5">
+    <div className="border border-hairline bg-surface p-5 space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-hairline pb-3 mb-4">
+      <div className="flex items-center justify-between border-b border-hairline pb-3">
         <div>
-          <span className="text-xs font-mono uppercase text-muted tracking-wider block">Distribución de Poisson</span>
-          <span className="font-scoreboard text-base text-main uppercase">Probabilidades 1X2</span>
+          <span className="text-xs font-mono uppercase text-muted tracking-wider block">Motor Predictivo Poisson</span>
+          <span className="font-scoreboard text-base text-main uppercase">Probabilidades 1X2 Proyectadas</span>
         </div>
         <div className="text-right">
           <span className="text-[10px] font-mono text-muted uppercase block">Marcador Más Probable</span>
           <span className="font-scoreboard text-lg text-led tabular-nums">
-            {mostLikelyScore.home} - {mostLikelyScore.away}
+            {mostLikelyScore?.home} - {mostLikelyScore?.away}
           </span>
-          <span className="text-[10px] font-mono text-muted ml-1">({mostLikelyScore.probability}%)</span>
+          <span className="text-[10px] font-mono text-muted ml-1">({mostLikelyScore?.probability}%)</span>
         </div>
       </div>
 
-      {/* 3-Segment Horizontal Bar (No gradients) */}
-      <div className="mb-4">
+      {/* 3-Segment Horizontal Bar */}
+      <div>
         <div className="w-full h-8 flex overflow-hidden border border-hairline">
           {/* Home Win */}
           <div
@@ -79,18 +85,82 @@ export const PoissonBar = ({ prediction }) => {
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-hairline text-xs font-mono">
-        <div className="bg-pitch/60 p-2.5 border border-hairline-subtle">
-          <span className="text-muted block text-[10px] uppercase">Goles Esperados (λ)</span>
-          <span className="text-main font-semibold tabular-nums">
-            {teams?.home}: <span className="text-led">{lambda?.home}</span> | {teams?.away}: <span className="text-led">{lambda?.away}</span>
+      {/* Decisiones y Lógica de Negocio Propia (Rúbrica de Evaluación) */}
+      <div className="space-y-3 pt-2 border-t border-hairline">
+        <div className="flex items-center justify-between text-[11px] font-mono text-muted uppercase">
+          <span className="font-semibold text-main flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-led" />
+            <span>Decisiones y Cálculos Automatizados del Motor</span>
+          </span>
+          {confidenceDecision && (
+            <span className="text-[10px] px-2 py-0.5 border border-hairline bg-pitch text-led">
+              Confianza: {confidenceDecision.level} ({confidenceDecision.score}%)
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Decisión 1: Roster Penalty */}
+          <div className="p-3 bg-pitch/70 border border-hairline-subtle text-xs font-mono">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] uppercase text-muted">Decisión 1: Estado de Plantilla</span>
+              {rosterDecision?.applied ? (
+                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-loss/20 text-loss border border-loss/40 uppercase font-bold">
+                  <AlertTriangle className="w-3 h-3" />
+                  -15% Ataque
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-win/20 text-win border border-win/40 uppercase font-bold">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Plantilla Estelar
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-main font-semibold">
+              {rosterDecision?.badge || 'Plantilla Estelar (100% Fuerza de Ataque)'}
+            </p>
+          </div>
+
+          {/* Decisión 2: Intensidad Over / Under 2.5 Goles */}
+          <div className="p-3 bg-pitch/70 border border-hairline-subtle text-xs font-mono">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] uppercase text-muted">Decisión 2: Línea de Intensidad</span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-surface text-led border border-hairline uppercase font-bold">
+                {overUnder25?.underPct}% Under
+              </span>
+            </div>
+            <p className="text-[11px] text-main font-semibold">
+              {overUnder25?.prediction}
+            </p>
+          </div>
+        </div>
+
+        {/* Decisión 3: Recomendación Algorítmica de Valor (Value Bet) */}
+        {valueBetDecision && (
+          <div className="p-3 bg-pitch/70 border border-hairline-subtle text-xs font-mono flex items-start space-x-2.5">
+            <Target className="w-4 h-4 text-led flex-shrink-0 mt-0.5" />
+            <div>
+              <span className="text-[10px] uppercase text-muted block">Decisión 3: Recomendación de Valor Algorítmica</span>
+              <p className="text-[11px] text-main font-semibold leading-relaxed mt-0.5">
+                {valueBetDecision.recommendation}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Fuerza de Ataque y Defensa (Goles Esperados) */}
+      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-hairline-subtle text-xs font-mono">
+        <div className="bg-surface-subtle p-2.5 border border-hairline-subtle">
+          <span className="text-muted block text-[10px] uppercase">Fuerza de Ataque (Local)</span>
+          <span className="text-main font-semibold tabular-nums text-sm">
+            {teams?.home}: <span className="text-win font-bold">{lambda?.home}</span>
           </span>
         </div>
-        <div className="bg-pitch/60 p-2.5 border border-hairline-subtle">
-          <span className="text-muted block text-[10px] uppercase">Línea de Goles (Over/Under 2.5)</span>
-          <span className="text-main font-semibold tabular-nums">
-            {overUnder25?.prediction} <span className="text-muted">({overUnder25?.overPct}%)</span>
+        <div className="bg-surface-subtle p-2.5 border border-hairline-subtle">
+          <span className="text-muted block text-[10px] uppercase">Fuerza de Ataque (Visitante)</span>
+          <span className="text-main font-semibold tabular-nums text-sm">
+            {teams?.away}: <span className="text-led font-bold">{lambda?.away}</span>
           </span>
         </div>
       </div>
