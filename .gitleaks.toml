@@ -1,12 +1,14 @@
-title = "Football Hub Gitleaks Config"
+title = "Football Hub gitleaks config"
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Permitir archivos de ejemplo y configuraciones públicas"
+description = "Archivos de ejemplo y secretos ficticios de pruebas"
 paths = [
   '''^\.env\.example$''',
-  '''package-lock\.json$''',
-  '''tests/.*'''
+  '''package-lock\.json$'''
+]
+regexes = [
+  '''test_(access|refresh)_secret_with_more_than_32_chars_+'''
 ]

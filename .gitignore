@@ -20,3 +20,5 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+security-reports/
+zap/
