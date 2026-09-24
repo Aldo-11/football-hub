@@ -289,9 +289,9 @@ const normalizeMatchDetail = (raw, { season, leagueName, leagueCode } = {}) => {
 // ───────────────────────── Plantilla ─────────────────────────
 const POSITION_GROUPS = [
   { key: 'GK', label: 'Porteros', match: (a) => /^(G|GK)$/i.test(a) || /goalkeeper/i.test(a) },
-  { key: 'DF', label: 'Defensas', match: (a) => /^(D|CD|CB|LB|RB|LWB|RWB|SW)/i.test(a) || /defender/i.test(a) },
-  { key: 'MF', label: 'Centrocampistas', match: (a) => /^(M|DM|CM|AM|LM|RM)/i.test(a) || /midfielder/i.test(a) },
-  { key: 'FW', label: 'Delanteros', match: (a) => /^(F|CF|ST|LW|RW|SS)/i.test(a) || /forward/i.test(a) }
+  { key: 'DF', label: 'Defensas', match: (a) => /^(D|CD|CB|LB|RB|LWB|RWB|SW)(-[LR])?$/i.test(a) || /defender/i.test(a) },
+  { key: 'MF', label: 'Centrocampistas', match: (a) => /^(M|DM|CM|AM|LM|RM)(-[LR])?$/i.test(a) || /midfielder/i.test(a) },
+  { key: 'FW', label: 'Delanteros', match: (a) => /^(F|CF|ST|LW|RW|SS)(-[LR])?$/i.test(a) || /forward|striker/i.test(a) }
 ];
 
 const positionGroupOf = (pos = {}) => {

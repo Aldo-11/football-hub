@@ -1,117 +1,78 @@
 import React from 'react';
+import { Crest, DataMeta } from './ui';
 
-export const StandingsTable = ({ standings, competitionName, userTeamId }) => {
-  if (!standings || standings.length === 0) {
-    return (
-      <div className="p-6 border border-hairline bg-surface text-center font-mono text-xs text-muted">
-        Cargando tabla de posiciones oficial...
-      </div>
-    );
-  }
+/**
+ * Clasificación completa de la liga del club. Las zonas de color salen de la
+ * configuración de la liga (backend), no están fijas en el componente.
+ */
+export const StandingsTable = ({ data, clubId }) => {
+  const { rows, league, season, meta, complete } = data;
+  const n = rows.length;
+  const ucl = league.zones.championsLeague;
+  const rel = league.zones.relegation;
 
   return (
     <div className="border border-hairline bg-surface overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-3 border-b border-hairline flex items-center justify-between bg-surface-subtle">
-        <div className="flex items-center space-x-2">
-          <span className="w-2 h-2 bg-win"></span>
-          <h3 className="font-scoreboard uppercase tracking-wider text-sm text-main">
-            {competitionName || 'Clasificación Oficial'}
-          </h3>
-        </div>
-        <span className="text-[10px] font-mono text-win uppercase tracking-widest font-semibold flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-win animate-pulse"></span>
-          Temporada 2026/2027 • En Curso
-        </span>
+      <div className="px-4 py-3 border-b border-hairline flex flex-wrap items-center justify-between gap-2 bg-surface-subtle">
+        <h3 className="font-scoreboard uppercase tracking-wider text-sm text-main">{league.name}</h3>
+        <span className="text-[10px] font-mono text-muted uppercase">Temporada {season} · {n} equipos</span>
       </div>
-
-      {/* Real Table with Hairlines */}
+      {!complete && (
+        <p className="px-4 py-2 text-[11px] text-loss font-mono border-b border-hairline">
+          La fuente devolvió {n} de {league.expectedTeams} equipos; la tabla puede estar incompleta.
+        </p>
+      )}
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse text-xs font-mono">
+          <caption className="sr-only">Clasificación de {league.name}</caption>
           <thead>
-            <tr className="border-b border-hairline text-[11px] font-mono uppercase tracking-wider text-muted bg-pitch/40">
-              <th className="py-2.5 px-3 text-center w-10">#</th>
-              <th className="py-2.5 px-3">Club</th>
-              <th className="py-2.5 px-3 text-right">PJ</th>
-              <th className="py-2.5 px-3 text-right hidden sm:table-cell">G</th>
-              <th className="py-2.5 px-3 text-right hidden sm:table-cell">E</th>
-              <th className="py-2.5 px-3 text-right hidden sm:table-cell">P</th>
-              <th className="py-2.5 px-3 text-right">DG</th>
-              <th className="py-2.5 px-3 text-right font-bold text-main">PTS</th>
+            <tr className="border-b border-hairline text-[11px] uppercase tracking-wider text-muted bg-pitch/40">
+              <th scope="col" className="py-2 px-2 text-center w-8">#</th>
+              <th scope="col" className="py-2 px-2">Club</th>
+              <th scope="col" className="py-2 px-2 text-right" title="Partidos jugados">PJ</th>
+              <th scope="col" className="py-2 px-2 text-right hidden sm:table-cell" title="Ganados">G</th>
+              <th scope="col" className="py-2 px-2 text-right hidden sm:table-cell" title="Empatados">E</th>
+              <th scope="col" className="py-2 px-2 text-right hidden sm:table-cell" title="Perdidos">P</th>
+              <th scope="col" className="py-2 px-2 text-right hidden md:table-cell" title="Goles a favor : en contra">GF:GC</th>
+              <th scope="col" className="py-2 px-2 text-right" title="Diferencia de goles">DG</th>
+              <th scope="col" className="py-2 px-2 text-right text-main">PTS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-hairline-subtle text-xs font-mono">
-            {standings.map((row) => {
-              const isUserTeam = String(row.team?.id) === String(userTeamId);
-              const rank = Number(row.position);
-              const isChampions = rank <= 4;
-              const isRelegation = rank >= standings.length - 2;
-
+          <tbody className="divide-y divide-hairline-subtle">
+            {rows.map((row) => {
+              const mine = row.clubId && row.clubId === clubId;
+              const zone = row.position <= ucl ? 'border-l-win' : row.position > n - rel ? 'border-l-loss' : 'border-l-transparent';
               return (
-                <tr
-                  key={row.team?.id || row.position}
-                  className={`hover:bg-surface-hover transition-colors ${
-                    isUserTeam ? 'bg-led/10 text-main font-semibold' : 'text-main/90'
-                  }`}
-                >
-                  <td className="py-2 px-3 text-center tabular-nums">
-                    <span
-                      className={`inline-block w-6 text-center py-0.5 text-[11px] ${
-                        isChampions ? 'text-win font-bold' : isRelegation ? 'text-loss font-bold' : 'text-muted'
-                      }`}
-                    >
-                      {String(row.position).padStart(2, '0')}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3">
-                    <div className="flex items-center space-x-2.5">
-                      {row.team?.crest && (
-                        <img
-                          src={row.team.crest}
-                          alt=""
-                          className="w-4 h-4 object-contain flex-shrink-0"
-                        />
-                      )}
-                      <span className="truncate max-w-[140px] sm:max-w-none text-main">
-                        {row.team?.name}
-                      </span>
-                      {isUserTeam && (
-                        <span className="text-[9px] uppercase px-1 py-0.2 bg-led text-pitch font-scoreboard tracking-wider">
-                          Tu Club
-                        </span>
-                      )}
+                <tr key={row.team.espnId} className={`border-l-2 ${zone} ${mine ? 'bg-led/10 font-semibold' : ''}`}>
+                  <td className="py-1.5 px-2 text-center tabular-nums text-muted">{row.position}</td>
+                  <td className="py-1.5 px-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Crest src={row.team.crest} size="w-4 h-4" />
+                      <span className="truncate text-main max-w-[130px] sm:max-w-none">{row.team.name}</span>
+                      {mine && <span className="text-[9px] uppercase px-1 bg-led text-pitch font-scoreboard">Tu club</span>}
                     </div>
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-muted">{row.playedGames}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-muted hidden sm:table-cell">{row.won}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-muted hidden sm:table-cell">{row.draw}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-muted hidden sm:table-cell">{row.lost}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums font-semibold ${row.goalDifference > 0 ? 'text-win' : row.goalDifference < 0 ? 'text-loss' : 'text-muted'}`}>
+                  <td className="py-1.5 px-2 text-right tabular-nums text-muted">{row.playedGames}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums text-muted hidden sm:table-cell">{row.won}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums text-muted hidden sm:table-cell">{row.draw}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums text-muted hidden sm:table-cell">{row.lost}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums text-muted hidden md:table-cell">{row.goalsFor}:{row.goalsAgainst}</td>
+                  <td className={`py-1.5 px-2 text-right tabular-nums ${row.goalDifference > 0 ? 'text-win' : row.goalDifference < 0 ? 'text-loss' : 'text-muted'}`}>
                     {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums font-bold text-main font-scoreboard text-sm">
-                    {row.points}
-                  </td>
+                  <td className="py-1.5 px-2 text-right tabular-nums font-scoreboard text-sm text-main">{row.points}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-
-      {/* Legend Footer */}
-      <div className="px-4 py-2 border-t border-hairline flex items-center justify-between text-[10px] font-mono text-muted bg-pitch/30">
-        <div className="flex items-center space-x-4">
-          <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-win inline-block"></span>
-            Champions League
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-loss inline-block"></span>
-            Descenso
-          </span>
+      <div className="px-4 py-2 border-t border-hairline flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-muted bg-pitch/30">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1"><span className="w-2 h-2 bg-win inline-block" />Top {ucl}: Champions</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 bg-loss inline-block" />Descenso ({rel})</span>
         </div>
-        <span>Caché sincronizada (1h)</span>
+        <DataMeta meta={meta} />
       </div>
     </div>
   );

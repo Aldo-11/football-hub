@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { KeyRound, ShieldAlert, ArrowRight } from 'lucide-react';
+import { errorMessage } from '../utils/errors';
+import { KeyRound, ShieldAlert } from 'lucide-react';
 
 export const Login = ({ onSwitchToRegister }) => {
   const { login } = useAuth();
@@ -23,7 +24,7 @@ export const Login = ({ onSwitchToRegister }) => {
         setError('Introduce el código de 6 dígitos de tu app de autenticación (2FA).');
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al iniciar sesión.');
+      setError(errorMessage(err, 'Error al iniciar sesión.'));
     } finally {
       setLoading(false);
     }
@@ -50,10 +51,12 @@ export const Login = ({ onSwitchToRegister }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-muted tracking-wider mb-1.5">
+            <label htmlFor="login-email" className="block text-xs font-mono uppercase text-muted tracking-wider mb-1.5">
               Correo Electrónico
             </label>
             <input
+              id="login-email"
+              autoComplete="email"
               type="email"
               required
               value={email}
@@ -64,10 +67,13 @@ export const Login = ({ onSwitchToRegister }) => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-muted tracking-wider mb-1.5">
+            <label htmlFor="login-password" className="block text-xs font-mono uppercase text-muted tracking-wider mb-1.5">
               Contraseña
             </label>
             <input
+              id="login-password"
+              autoComplete="current-password"
+              maxLength={72}
               type="password"
               required
               value={password}
@@ -79,16 +85,20 @@ export const Login = ({ onSwitchToRegister }) => {
 
           {show2FA && (
             <div className="p-3 border border-led/40 bg-pitch/70">
-              <label className="block text-xs font-mono uppercase text-led tracking-wider mb-1.5 flex items-center gap-1.5">
+              <label htmlFor="login-totp" className="text-xs font-mono uppercase text-led tracking-wider mb-1.5 flex items-center gap-1.5">
                 <KeyRound className="w-3.5 h-3.5" />
                 Código 2FA (6 dígitos)
               </label>
               <input
+                id="login-totp"
                 type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="\d{6}"
                 maxLength={6}
                 required
                 value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="123456"
                 className="w-full bg-pitch border border-led px-3 py-2 text-led font-scoreboard tracking-[0.3em] text-center text-lg focus:outline-none"
               />

@@ -1,280 +1,138 @@
 import React, { useEffect, useState } from 'react';
+import { Compass, Sparkles, CheckCircle2, Clock } from 'lucide-react';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import { PoissonBar } from '../components/PoissonBar';
-import { Compass, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import { useApi } from '../hooks/useApi';
+import { useClub } from '../context/ClubContext';
+import { Card, Loading, ErrorState, PageHeader, EmptyState, Crest, SectionTitle } from '../components/ui';
+import { formatMatchDate, formatTime, timeZoneName, formatShortDate } from '../utils/dates';
+import { errorMessage } from '../utils/errors';
+
+const PoissonHint = ({ clubId, fixtureId }) => {
+  const { data } = useApi(`/clubs/${clubId}/prediction`, { fixtureId });
+  if (!data) return null;
+  const p = data.prediction;
+  return (
+    <p className="p-2 bg-pitch/50 border border-hairline-subtle text-[11px] font-mono text-muted flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="flex items-center gap-1 text-main"><Sparkles className="w-3 h-3 text-led" /> Poisson: <b className="text-led">{p.mostLikelyScore.home}-{p.mostLikelyScore.away}</b></span>
+      <span>1 {p.probabilities.homeWin}% · X {p.probabilities.draw}% · 2 {p.probabilities.awayWin}%</span>
+    </p>
+  );
+};
+
+const ScoreInput = ({ value, onChange, label }) => (
+  <input type="number" inputMode="numeric" min="0" max="20" value={value} aria-label={label}
+    onChange={(e) => onChange(e.target.value === '' ? '' : Math.max(0, Math.min(20, parseInt(e.target.value, 10) || 0)))}
+    className="w-12 h-12 bg-pitch border border-hairline text-center font-scoreboard text-xl text-led tabular-nums focus:border-led focus:outline-none" />
+);
 
 export const Predictions = () => {
-  const { user } = useAuth();
-  const teamId = user?.favoriteTeamId || '65';
-
-  const [nextMatches, setNextMatches] = useState([]);
-  const [myPredictions, setMyPredictions] = useState([]);
+  const { club } = useClub();
+  const matches = useApi(`/clubs/${club.id}/matches`);
+  const mine = useApi('/predictions/my');
   const [inputs, setInputs] = useState({});
-  const [submitting, setSubmitting] = useState({});
-  const [message, setMessage] = useState('');
-  const [poissonMap, setPoissonMap] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState({});
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [matchesRes, myPredsRes] = await Promise.all([
-          api.get(`/matches/next/${teamId}`),
-          api.get('/predictions/my')
-        ]);
+    const initial = {};
+    (mine.data?.predictions || []).forEach((p) => { initial[p.fixtureId] = { home: p.predictedHome, away: p.predictedAway }; });
+    setInputs(initial);
+  }, [mine.data]);
 
-        const matches = matchesRes.data?.data || [];
-        setNextMatches(matches);
-        setMyPredictions(myPredsRes.data?.predictions || []);
+  const setScore = (id, side, v) => setInputs((prev) => ({ ...prev, [id]: { ...prev[id], [side]: v } }));
 
-        // Precargar inputs si ya existen pronósticos
-        const initialInputs = {};
-        myPredsRes.data?.predictions?.forEach(p => {
-          initialInputs[p.fixtureId] = {
-            home: p.predictedHome,
-            away: p.predictedAway
-          };
-        });
-        setInputs(initialInputs);
-
-        // Consultar Poisson para los partidos
-        matches.slice(0, 3).forEach(async (m) => {
-          try {
-            const predRes = await api.get(`/predict/${m.fixtureId}`, {
-              params: {
-                homeTeam: m.homeTeam?.name,
-                awayTeam: m.awayTeam?.name
-              }
-            });
-            setPoissonMap(prev => ({ ...prev, [m.fixtureId]: predRes.data }));
-          } catch (e) {
-            // Ignorar
-          }
-        });
-      } catch (err) {
-        console.error('Error cargando predicciones:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [teamId]);
-
-  const handleInputChange = (fixtureId, side, value) => {
-    const val = value === '' ? '' : parseInt(value, 10);
-    setInputs(prev => ({
-      ...prev,
-      [fixtureId]: {
-        ...prev[fixtureId],
-        [side]: val
-      }
-    }));
-  };
-
-  const handleSubmitPrediction = async (fixtureId) => {
-    const data = inputs[fixtureId];
-    if (data?.home === undefined || data?.away === undefined || data.home === '' || data.away === '') {
-      setMessage('Por favor introduce un marcador completo.');
+  const submit = async (m) => {
+    const v = inputs[m.fixtureId] || {};
+    if (v.home === '' || v.home == null || v.away === '' || v.away == null) {
+      setStatus((s) => ({ ...s, [m.fixtureId]: { error: 'Introduce ambos marcadores.' } }));
       return;
     }
-
-    setSubmitting(prev => ({ ...prev, [fixtureId]: true }));
-    setMessage('');
-
+    setStatus((s) => ({ ...s, [m.fixtureId]: { saving: true } }));
     try {
-      const res = await api.post('/predictions', {
-        fixtureId,
-        predictedHome: Number(data.home),
-        predictedAway: Number(data.away)
-      });
-
-      setMessage('¡Pronóstico registrado con éxito! Competirás por hasta 3 puntos en el leaderboard.');
-
-      // Refrescar lista de pronósticos
-      const myPredsRes = await api.get('/predictions/my');
-      setMyPredictions(myPredsRes.data?.predictions || []);
+      await api.post('/predictions', { clubId: club.id, fixtureId: m.fixtureId, predictedHome: v.home, predictedAway: v.away });
+      setStatus((s) => ({ ...s, [m.fixtureId]: { ok: 'Pronóstico guardado.' } }));
+      mine.reload();
     } catch (err) {
-      setMessage(err.response?.data?.error || 'Error al enviar pronóstico.');
-    } finally {
-      setSubmitting(prev => ({ ...prev, [fixtureId]: false }));
+      setStatus((s) => ({ ...s, [m.fixtureId]: { error: errorMessage(err) } }));
     }
   };
 
+  const saved = (id) => (mine.data?.predictions || []).find((p) => p.fixtureId === id);
+  const upcoming = matches.data?.upcoming || [];
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Header Banner */}
-      <div className="border border-hairline bg-surface p-6 sm:p-8">
-        <div className="flex items-center space-x-3 mb-2">
-          <Compass className="w-5 h-5 text-led" />
-          <h1 className="text-xl sm:text-2xl font-scoreboard uppercase text-main tracking-wide">
-            Liga Comunitaria de Pronósticos
-          </h1>
-        </div>
-        <p className="text-xs font-mono text-muted uppercase tracking-wider max-w-2xl">
-          Acierta marcadores oficiales para acumular puntos en el ranking global.
-          Marcador exacto otorga <span className="text-led font-bold">3 puntos</span>; acertar el ganador/empate otorga <span className="text-win font-bold">1 punto</span>.
-        </p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <PageHeader icon={Compass} title="Liga de pronósticos"
+        subtitle={`Pronostica los próximos partidos de ${club.shortName}. Se aceptan hasta el inicio del partido. Marcador exacto: 3 puntos; acertar ganador o empate: 1 punto.`} />
 
-        {message && (
-          <div className="mt-4 p-3 bg-led/10 border border-led text-xs font-mono text-main flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-led flex-shrink-0" />
-            <span>{message}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Upcoming matches to predict */}
-        <div className="lg:col-span-7 space-y-6">
-          <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 bg-led"></span>
-            <h2 className="font-scoreboard uppercase tracking-wider text-sm text-main">
-              Partidos Disponibles para Pronosticar
-            </h2>
-          </div>
-
-          {loading ? (
-            <p className="text-muted font-mono text-xs py-8 text-center">Cargando partidos...</p>
-          ) : nextMatches.length === 0 ? (
-            <div className="border border-hairline bg-surface p-6 text-center font-mono text-xs text-muted">
-              No hay partidos próximos disponibles en este momento.
-            </div>
-          ) : (
-            nextMatches.map((m) => {
-              const currentInput = inputs[m.fixtureId] || { home: '', away: '' };
-              const isSubmitting = submitting[m.fixtureId];
-              const pEngine = poissonMap[m.fixtureId];
-              const alreadyPredicted = myPredictions.find(p => p.fixtureId === m.fixtureId);
-
-              return (
-                <div key={m.fixtureId} className="border border-hairline bg-surface p-5 space-y-4">
-                  <div className="flex items-center justify-between text-[11px] font-mono text-muted border-b border-hairline pb-2">
-                    <span className="uppercase font-semibold text-main">{m.competition}</span>
-                    <span>{new Date(m.utcDate).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                  </div>
-
-                  {/* Match Matchup & Inputs */}
-                  <div className="grid grid-cols-1 sm:grid-cols-11 items-center gap-4 py-2">
-                    {/* Home Team */}
-                    <div className="sm:col-span-4 flex items-center space-x-3 justify-start sm:justify-end text-left sm:text-right">
-                      <span className="font-scoreboard uppercase text-sm text-main truncate">
-                        {m.homeTeam?.name}
-                      </span>
-                      {m.homeTeam?.crest && (
-                        <img src={m.homeTeam.crest} alt="" className="w-8 h-8 object-contain flex-shrink-0" />
-                      )}
-                    </div>
-
-                    {/* Inputs */}
-                    <div className="sm:col-span-3 flex items-center justify-center space-x-2">
-                      <input
-                        type="number"
-                        min="0"
-                        max="20"
-                        value={currentInput.home}
-                        onChange={(e) => handleInputChange(m.fixtureId, 'home', e.target.value)}
-                        placeholder="0"
-                        className="w-12 h-12 bg-pitch border border-hairline text-center font-scoreboard text-xl text-led tabular-nums focus:border-led focus:outline-none"
-                      />
-                      <span className="font-scoreboard text-muted text-xl">:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="20"
-                        value={currentInput.away}
-                        onChange={(e) => handleInputChange(m.fixtureId, 'away', e.target.value)}
-                        placeholder="0"
-                        className="w-12 h-12 bg-pitch border border-hairline text-center font-scoreboard text-xl text-led tabular-nums focus:border-led focus:outline-none"
-                      />
-                    </div>
-
-                    {/* Away Team */}
-                    <div className="sm:col-span-4 flex items-center space-x-3 justify-start text-left">
-                      {m.awayTeam?.crest && (
-                        <img src={m.awayTeam.crest} alt="" className="w-8 h-8 object-contain flex-shrink-0" />
-                      )}
-                      <span className="font-scoreboard uppercase text-sm text-main truncate">
-                        {m.awayTeam?.name}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Action row */}
-                  <div className="flex items-center justify-between pt-3 border-t border-hairline-subtle">
-                    <span className="text-[11px] font-mono text-muted">
-                      {alreadyPredicted
-                        ? `Tu pronóstico guardado: ${alreadyPredicted.predictedHome} - ${alreadyPredicted.predictedAway}`
-                        : 'Sin pronóstico registrado'}
-                    </span>
-                    <button
-                      onClick={() => handleSubmitPrediction(m.fixtureId)}
-                      disabled={isSubmitting}
-                      className="bg-led hover:bg-yellow-400 text-pitch font-scoreboard uppercase px-4 py-1.5 text-xs tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      {isSubmitting ? 'Guardando...' : alreadyPredicted ? 'Actualizar Marcador' : 'Registrar Marcador'}
-                    </button>
-                  </div>
-
-                  {/* Poisson helper preview if available */}
-                  {pEngine && (
-                    <div className="pt-2">
-                      <div className="p-2.5 bg-pitch/50 border border-hairline-subtle text-[11px] font-mono text-muted flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-main">
-                          <Sparkles className="w-3 h-3 text-led" />
-                          Sugerencia Poisson: <strong className="text-led">{pEngine.mostLikelyScore.home} - {pEngine.mostLikelyScore.away}</strong>
-                        </span>
-                        <span>{pEngine.overUnder25.prediction}</span>
-                      </div>
-                    </div>
-                  )}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-7 space-y-4">
+          <SectionTitle title="Partidos abiertos" right={`${upcoming.length} partidos`} />
+          {matches.loading && <Card><Loading /></Card>}
+          {matches.error && <Card><ErrorState error={matches.error} onRetry={matches.reload} /></Card>}
+          {matches.data && upcoming.length === 0 && <Card><EmptyState>No hay partidos próximos publicados.</EmptyState></Card>}
+          {upcoming.map((m, i) => {
+            const v = inputs[m.fixtureId] || { home: '', away: '' };
+            const st = status[m.fixtureId] || {};
+            const prev = saved(m.fixtureId);
+            return (
+              <Card key={m.fixtureId} className="p-4 space-y-3">
+                <div className="flex justify-between text-[11px] font-mono text-muted">
+                  <span className="uppercase text-main">{m.competition}</span>
+                  <span>{formatMatchDate(m.utcDate)} · {formatTime(m.utcDate)} {timeZoneName(m.utcDate)}</span>
                 </div>
-              );
-            })
-          )}
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                  <div className="flex items-center gap-2 justify-end text-right min-w-0">
+                    <span className="font-scoreboard uppercase text-xs sm:text-sm text-main truncate">{m.homeTeam.shortName}</span>
+                    <Crest src={m.homeTeam.crest} size="w-7 h-7" />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <ScoreInput value={v.home} label={`Goles de ${m.homeTeam.name}`} onChange={(x) => setScore(m.fixtureId, 'home', x)} />
+                    <span className="font-scoreboard text-muted">:</span>
+                    <ScoreInput value={v.away} label={`Goles de ${m.awayTeam.name}`} onChange={(x) => setScore(m.fixtureId, 'away', x)} />
+                  </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Crest src={m.awayTeam.crest} size="w-7 h-7" />
+                    <span className="font-scoreboard uppercase text-xs sm:text-sm text-main truncate">{m.awayTeam.shortName}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-hairline-subtle">
+                  <span className={`text-[11px] font-mono ${st.error ? 'text-loss' : st.ok ? 'text-win' : 'text-muted'}`} role="status">
+                    {st.error || st.ok || (prev ? `Guardado: ${prev.predictedHome}-${prev.predictedAway}` : 'Sin pronóstico')}
+                  </span>
+                  <button onClick={() => submit(m)} disabled={st.saving}
+                    className="bg-led hover:bg-yellow-400 text-pitch font-scoreboard uppercase px-4 py-1.5 text-xs disabled:opacity-50">
+                    {st.saving ? 'Guardando…' : prev ? 'Actualizar' : 'Registrar'}
+                  </button>
+                </div>
+                {i < 3 && <PoissonHint clubId={club.id} fixtureId={m.fixtureId} />}
+              </Card>
+            );
+          })}
         </div>
 
-        {/* Right Column: User's History */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="flex items-center space-x-2">
-            <Clock className="w-4 h-4 text-led" />
-            <h2 className="font-scoreboard uppercase tracking-wider text-sm text-main">
-              Mis Pronósticos Registrados
-            </h2>
-          </div>
-
-          <div className="border border-hairline bg-surface p-5">
-            {myPredictions.length === 0 ? (
-              <p className="text-muted font-mono text-xs py-6 text-center">Aún no has registrado ningún pronóstico.</p>
-            ) : (
-              <div className="divide-y divide-hairline-subtle">
-                {myPredictions.map((p) => (
-                  <div key={p._id || p.fixtureId} className="py-3 flex items-center justify-between text-xs font-mono">
-                    <div>
-                      <span className="text-[10px] text-muted block uppercase">Partido ID: {p.fixtureId}</span>
-                      <span className="text-main font-semibold">
-                        Pronóstico: <span className="text-led font-scoreboard text-sm">{p.predictedHome} - {p.predictedAway}</span>
-                      </span>
-                    </div>
-
-                    <div className="text-right">
-                      {p.resolved ? (
-                        <div className="bg-surface-subtle px-2.5 py-1 border border-hairline">
-                          <span className="text-[10px] text-muted block uppercase">Puntos</span>
-                          <span className="font-scoreboard text-base text-win font-bold">+{p.pointsAwarded} PTS</span>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] uppercase font-semibold text-muted bg-pitch px-2 py-1 border border-hairline">
-                          Pendiente
-                        </span>
-                      )}
-                    </div>
+        <div className="lg:col-span-5">
+          <SectionTitle icon={Clock} title="Mis pronósticos" />
+          <Card className="p-4">
+            {mine.loading && <Loading />}
+            {mine.error && <ErrorState error={mine.error} onRetry={mine.reload} />}
+            {mine.data && mine.data.predictions.length === 0 && <EmptyState>Aún no has registrado pronósticos.</EmptyState>}
+            <ul className="divide-y divide-hairline-subtle">
+              {(mine.data?.predictions || []).map((p) => (
+                <li key={p._id} className="py-2.5 flex items-center justify-between gap-2 text-xs font-mono">
+                  <div className="min-w-0">
+                    <span className="block text-[10px] text-muted">{formatShortDate(p.kickoff)}</span>
+                    <span className="text-main truncate block">{p.homeTeam} <b className="text-led">{p.predictedHome}-{p.predictedAway}</b> {p.awayTeam}</span>
+                    {p.resolved && <span className="text-[10px] text-muted">Resultado final: {p.finalScore?.home}-{p.finalScore?.away}</span>}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  {p.resolved ? (
+                    <span className={`flex items-center gap-1 font-scoreboard ${p.pointsAwarded > 0 ? 'text-win' : 'text-muted'}`}><CheckCircle2 className="w-3.5 h-3.5" /> +{p.pointsAwarded}</span>
+                  ) : (
+                    <span className="text-[10px] uppercase text-muted border border-hairline px-2 py-0.5">Pendiente</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Card>
         </div>
       </div>
     </div>

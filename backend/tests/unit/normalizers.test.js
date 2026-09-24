@@ -124,6 +124,15 @@ describe('normalizeRoster', () => {
   });
 });
 
+test('posiciones: DM es centrocampista (no defensa) y CD-L es defensa', () => {
+  expect(norm.positionGroupOf({ abbreviation: 'DM' })).toBe('MF');
+  expect(norm.positionGroupOf({ abbreviation: 'CD-L' })).toBe('DF');
+  expect(norm.positionGroupOf({ abbreviation: 'CF-R' })).toBe('FW');
+  expect(norm.positionGroupOf({ abbreviation: 'G' })).toBe('GK');
+  expect(norm.positionGroupOf({ name: 'Defender' })).toBe('DF');
+  expect(norm.positionGroupOf({})).toBe('OT');
+});
+
 describe('normalizeNews', () => {
   test('solo artículos con enlace directo; imagen opcional; ordena por fecha', () => {
     const raw = { articles: [
