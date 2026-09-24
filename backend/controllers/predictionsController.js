@@ -1,101 +1,82 @@
-﻿const { z } = require('zod');
 const Prediction = require('../models/Prediction');
 const PredictionLeagueScore = require('../models/PredictionLeagueScore');
-const logger = require('../config/logger');
+const analysis = require('../services/analysisService');
+const { getClub } = require('../config/clubs');
+const { asyncHandler, AppError } = require('../utils/errors');
 
-const predictionSchema = z.object({
-  fixtureId: z.string().min(1, 'fixtureId es requerido'),
-  predictedHome: z.number().int().min(0, 'Goles locales deben ser >= 0'),
-  predictedAway: z.number().int().min(0, 'Goles visitantes deben ser >= 0')
-});
+/**
+ * Registra o actualiza un pronóstico. Reglas de negocio (servidor):
+ *  - el partido debe ser un partido próximo real del club indicado;
+ *  - solo se acepta antes del inicio del partido;
+ *  - un pronóstico ya resuelto no se puede modificar.
+ */
+const createPrediction = asyncHandler(async (req, res) => {
+  const { clubId, fixtureId, predictedHome, predictedAway } = req.body;
+  const now = new Date();
 
-const createPrediction = async (req, res) => {
-  try {
-    const { fixtureId, predictedHome, predictedAway } = predictionSchema.parse(req.body);
-    const userId = req.user._id;
+  const fixtures = await analysis.getClubFixtures(clubId, now);
+  const match = fixtures.upcoming.find((m) => m.fixtureId === fixtureId);
+  if (!match) {
+    throw new AppError('El partido no existe o ya comenzó; solo se aceptan pronósticos de partidos por jugar.', { status: 422, code: 'MATCH_NOT_OPEN' });
+  }
 
-    // Upsert para actualizar o crear el pronóstico del usuario
-    const prediction = await Prediction.findOneAndUpdate(
-      { userId, fixtureId },
-      {
-        userId,
-        fixtureId,
+  const existing = await Prediction.findOne({ userId: req.user._id, fixtureId });
+  if (existing?.resolved) {
+    throw new AppError('Este pronóstico ya fue resuelto.', { status: 409, code: 'PREDICTION_RESOLVED' });
+  }
+
+  const prediction = await Prediction.findOneAndUpdate(
+    { userId: req.user._id, fixtureId },
+    {
+      $set: {
+        clubId,
+        leagueCode: getClub(clubId).league,
+        kickoff: new Date(match.utcDate),
+        homeTeam: match.homeTeam.name,
+        awayTeam: match.awayTeam.name,
         predictedHome,
         predictedAway,
-        resolved: false,
-        pointsAwarded: 0,
-        createdAt: new Date()
+        updatedAt: now
       },
-      { upsert: true, returnDocument: 'after' }
-    );
+      $setOnInsert: { createdAt: now }
+    },
+    { upsert: true, new: true, runValidators: true }
+  );
 
-    logger.info(`Pronóstico registrado para usuario ${req.user.email} en partido ${fixtureId}: ${predictedHome}-${predictedAway}`);
+  res.status(existing ? 200 : 201).json({ message: existing ? 'Pronóstico actualizado' : 'Pronóstico registrado', prediction });
+});
 
-    res.status(201).json({
-      message: 'Pronóstico registrado con éxito en la Liga de Pronósticos',
-      prediction
-    });
-  } catch (error) {
-    if (error.errors) {
-      return res.status(400).json({ error: 'Datos de pronóstico inválidos', details: error.errors });
-    }
-    logger.error('Error al guardar pronóstico:', error.message);
-    res.status(500).json({ error: 'Error interno al registrar pronóstico' });
-  }
+const getMyPredictions = asyncHandler(async (req, res) => {
+  const predictions = await Prediction.find({ userId: req.user._id }).sort({ kickoff: -1 }).limit(50).lean();
+  res.json({ predictions });
+});
+
+const maskEmail = (email) => {
+  const [user, domain] = email.split('@');
+  return user.length > 2 ? `${user[0]}***${user[user.length - 1]}@${domain}` : `***@${domain}`;
 };
 
-const getMyPredictions = async (req, res) => {
-  try {
-    const predictions = await Prediction.find({ userId: req.user._id })
-      .sort({ createdAt: -1 })
-      .limit(20);
+const getLeaderboard = asyncHandler(async (req, res) => {
+  const scores = await PredictionLeagueScore.find()
+    .populate('userId', 'email favoriteTeamId')
+    .sort({ totalPoints: -1, exactHits: -1, resultHits: -1 })
+    .limit(50)
+    .lean();
 
-    res.json({ predictions });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener tus pronósticos', details: error.message });
-  }
-};
+  const leaderboard = scores
+    .filter((s) => s.userId)
+    .map((entry, index) => ({
+      rank: index + 1,
+      userId: entry.userId._id,
+      displayName: maskEmail(entry.userId.email),
+      favoriteTeamId: entry.userId.favoriteTeamId,
+      totalPoints: entry.totalPoints,
+      exactHits: entry.exactHits,
+      resultHits: entry.resultHits,
+      isMe: String(entry.userId._id) === String(req.user._id)
+    }));
 
-const getLeaderboard = async (req, res) => {
-  try {
-    const scores = await PredictionLeagueScore.find()
-      .populate('userId', 'email favoriteTeamId')
-      .sort({ totalPoints: -1, exactHits: -1, resultHits: -1 })
-      .limit(50);
+  res.json({ leaderboard, totalParticipants: leaderboard.length });
+});
 
-    const leaderboard = scores
-      .filter(s => s.userId) // filtrar usuarios existentes
-      .map((entry, index) => {
-        // Enmascarar email para privacidad (ej. j***e@domain.com)
-        const email = entry.userId.email;
-        const [userPart, domainPart] = email.split('@');
-        const maskedEmail = userPart.length > 2
-          ? `${userPart[0]}***${userPart[userPart.length - 1]}@${domainPart}`
-          : email;
-
-        return {
-          rank: String(index + 1).padStart(2, '0'), // 01, 02, 03... formato marcador
-          userId: entry.userId._id,
-          displayName: maskedEmail,
-          favoriteTeamId: entry.userId.favoriteTeamId,
-          totalPoints: entry.totalPoints,
-          exactHits: entry.exactHits,
-          resultHits: entry.resultHits
-        };
-      });
-
-    res.json({
-      leaderboard,
-      totalParticipants: leaderboard.length
-    });
-  } catch (error) {
-    logger.error('Error obteniendo leaderboard:', error.message);
-    res.status(500).json({ error: 'Error al obtener clasificación', details: error.message });
-  }
-};
-
-module.exports = {
-  createPrediction,
-  getMyPredictions,
-  getLeaderboard
-};
+module.exports = { createPrediction, getMyPredictions, getLeaderboard };
