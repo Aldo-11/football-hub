@@ -1,5 +1,7 @@
 # Football Hub
 
+Repositorio: https://github.com/Aldo-11/football-hub
+
 Aplicación web para aficionados que siguen a uno de **10 clubes europeos**. Toma datos deportivos de una fuente externa (ESPN) y los **procesa con lógica propia**: clasifica partidos, calcula un índice de rendimiento, detecta puntos clave (alertas), pronostica partidos con un modelo de Poisson, simula el resto de la temporada con Monte Carlo y compara clubes.
 
 > **¿Qué hace la API y qué hace Football Hub?**
@@ -13,6 +15,10 @@ Aplicación web para aficionados que siguen a uno de **10 clubes europeos**. Tom
 **Problema.** Las webs deportivas muestran datos, pero no los interpretan: el aficionado ve una tabla y resultados, pero no sabe si su equipo está en racha, si ataca o defiende mejor que su liga, qué probabilidad tiene el próximo partido o cómo podría terminar la temporada.
 
 **Usuario.** Aficionado de uno de los clubes soportados que quiere seguir a su equipo con información procesada y explicada en lenguaje sencillo.
+
+**Objetivo.** Reunir en una sola aplicación los datos de la temporada en curso del club y convertirlos en conclusiones verificables: cómo rinde el equipo, qué destaca, qué probabilidad tiene su próximo partido y cómo podría terminar la temporada.
+
+**Beneficio.** Sin la app, el aficionado tendría que consultar varias webs y calcular a mano medias, rachas y comparaciones con su liga, y aun así no podría estimar probabilidades. Football Hub automatiza ese proceso: con elegir el club obtiene el índice de rendimiento, los puntos clave detectados por reglas, el pronóstico de Poisson y miles de simulaciones de la temporada, cada uno con su fórmula visible.
 
 **Incluye**
 
@@ -31,6 +37,18 @@ Aplicación web para aficionados que siguen a uno de **10 clubes europeos**. Tom
 Las clasificaciones y simulaciones incluyen **todos** los equipos de la liga del club.
 
 **No incluye:** otras competiciones (Champions, copas), apuestas, valor de mercado (ver Limitaciones), datos de temporadas anteriores.
+
+### 1.1 Decisiones y cambios de alcance (justificación)
+
+| Cambio | Motivo |
+|---|---|
+| Fuente de datos: de TheSportsDB + datos escritos a mano → **API pública de ESPN** | La versión anterior mostraba clasificaciones, calendarios y estadísticas escritas a mano o inventadas (p. ej. xG y goleadores ficticios) y descartaba la respuesta real de la API. ESPN ofrece clasificación completa por temporada, calendario, alineaciones, estadísticas, plantillas y noticias sin API key. |
+| Catálogo reducido a **10 clubes** (antes 37 seleccionables) | Acota el alcance a clubes con cobertura completa de datos; las tablas y simulaciones siguen incluyendo toda su liga. |
+| Se eliminaron los datos y noticias "de respaldo" inventados | Mostrar información no verificable como real es incorrecto; ahora se indica "no disponible" o se usan datos en caché marcados como guardados. |
+| **Valor de mercado** fuera de alcance | Transfermarkt no tiene API pública y extraer sus datos incumple sus condiciones de uso. |
+| "IRC" → **Índice de Rendimiento del Equipo**; "Alertas automáticas" → **Puntos clave del equipo** | Nombres más comprensibles para el usuario; la lógica es la misma. |
+| Se añadieron Análisis del equipo, Monte Carlo, H2H y Club | Aportan lógica propia demostrable (cálculos, reglas y simulación) en lugar de solo mostrar datos de la API. |
+| Contraseña robusta obligatoria (antes solo 8 caracteres) | Requisito de seguridad; se valida en el backend aunque se manipule el frontend. |
 
 ---
 
@@ -187,7 +205,7 @@ npm run test:e2e      # flujo completo contra MongoDB real (requiere MONGO_URI)
 npm run test:coverage --prefix backend
 ```
 
-- **Backend: 107 pruebas** unitarias y de API (Supertest). Las de API usan ESPN y MongoDB simulados, por lo que corren sin red. Cobertura ≈ 88 % de líneas.
+- **Backend: 109 pruebas** unitarias y de API (Supertest). Las de API usan ESPN y MongoDB simulados, por lo que corren sin red. Cobertura ≈ 88 % de líneas.
   - Lógica propia: Poisson (contra fórmulas analíticas), índice, alertas, Monte Carlo (reproducibilidad, probabilidades que suman 100 %, rangos), H2H, clasificación de partidos.
   - Integridad: rechazo de otra temporada, descarte de partidos de 2025-26, duplicados, datos faltantes.
   - Seguridad: contraseñas débiles rechazadas por el backend, bcrypt, cookies, rotación y reutilización de refresh token, token manipulado, JSON mal formado, mass assignment, cabeceras.
@@ -213,6 +231,19 @@ npm run test:coverage --prefix backend
 
 Además: **Dependabot** (`.github/dependabot.yml`) propone actualizaciones semanales y `Jenkinsfile` reproduce el mismo pipeline en Jenkins (`docker-compose.jenkins.yml`).
 
+### 7.1 Hallazgos atendidos
+
+| Herramienta | Hallazgo | Acción |
+|---|---|---|
+| npm audit | 1 crítica + 2 altas: `tar` (vía bcrypt 5) y `uuid` (vía node-cron 3) | Actualizados a bcrypt 6 y node-cron 4 → 0 vulnerabilidades |
+| npm audit | Advertencia moderada en `@vitest/mocker` | Actualizado Vitest |
+| Revisión de código | Secretos JWT con valor por defecto en el código | Eliminados; obligatorios en producción |
+| Revisión de código | Errores internos (`error.message`) devueltos al cliente | Manejador global sin detalles internos |
+| Revisión de código | Validación de contraseña solo por longitud | Política completa en backend y frontend |
+| Semgrep (primer run de CI) | 19 hallazgos: acciones de GitHub con etiqueta mutable y Dependabot sin periodo de espera | Acciones fijadas a SHA y `cooldown` de 7 días |
+| Dependabot | Actualizaciones de acciones (p. ej. `upload-artifact`) | PRs revisados y fusionados con CI en verde |
+| Despliegue | Detrás de un proxy, el rate limit usaba la IP del proxy para todos | `trust proxy` configurable (1 por defecto en producción) |
+
 ---
 
 ## 8. Ejecución local
@@ -231,7 +262,9 @@ Comandos útiles: `npm run lint`, `npm run test`, `npm run audit`.
 
 ---
 
-## 8.1 Despliegue en producción (p. ej. Hostinger)
+## 8.1 Despliegue en producción (Hostinger, aplicación Node.js)
+
+Se eligió **Hostinger (aplicación Node.js)** frente a Vercel (plan gratuito) porque la app necesita un **proceso Node.js persistente**: la tarea programada que puntúa pronósticos (node-cron), la caché en memoria de ESPN y la simulación Monte Carlo. En Vercel el backend se ejecutaría como funciones serverless que se apagan entre peticiones: el cron no corre, la caché se pierde y las simulaciones grandes pueden superar el tiempo máximo de ejecución.
 
 La app se despliega como **una sola aplicación Node.js**: en producción el backend sirve también el frontend compilado.
 
