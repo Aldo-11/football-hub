@@ -17,3 +17,15 @@ describe('Catálogo de clubes', () => {
     expect(getClub('<script>')).toBeNull();
   });
 });
+
+describe('Diagnóstico de conexión a MongoDB (sin datos internos)', () => {
+  const { classifyError } = require('../../config/db');
+  test.each([
+    ['MONGO_URI no está configurada en las variables de entorno.', 'Falta la variable MONGO_URI'],
+    ['bad auth : Authentication failed.', 'Usuario o contraseña de MongoDB incorrectos'],
+    ['querySrv ENOTFOUND _mongodb._tcp.cluster0.xxx.mongodb.net', 'No se alcanza el servidor de MongoDB (revisa la URI y Network Access en Atlas)'],
+    ['algo raro', 'Error de conexión con MongoDB (ver logs)']
+  ])('%s → %s', (msg, expected) => {
+    expect(classifyError(msg)).toBe(expected);
+  });
+});
