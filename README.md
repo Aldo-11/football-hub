@@ -245,6 +245,8 @@ Además: **Dependabot** (`.github/dependabot.yml`) propone actualizaciones seman
 | Despliegue | Detrás de un proxy, el rate limit usaba la IP del proxy para todos | `trust proxy` configurable (1 por defecto en producción) |
 | OWASP ZAP (DAST) | 3 medias: CSP con comodín en `img-src` y `style-src 'unsafe-inline'`; hoja de Google Fonts sin Subresource Integrity | CSP restringida a `'self'` + `*.espncdn.com`, sin `unsafe-inline`; fuentes servidas desde el propio sitio (`@fontsource`), sin recursos de terceros |
 | OWASP ZAP (DAST) | 2 bajas: faltaban `Cross-Origin-Embedder-Policy` y `Permissions-Policy` | COEP `credentialless` (no rompe las imágenes de ESPN) y `Permissions-Policy` restrictiva |
+| Despliegue (Hostinger) | El build fallaba con `vite: command not found` porque el hosting define `NODE_ENV=production` y omite las devDependencies | `build:prod` instala el frontend con `--include=dev` |
+| Despliegue (Hostinger) | Error 503: con Passenger el servidor no arrancaba (`require.main` no es el módulo) y las variables de entorno traían caracteres sobrantes | Arranque desde `server.js` de la raíz compatible con Passenger, limpieza de variables y conexión a MongoDB con reintentos |
 | GitHub Actions | Aviso: acciones sobre Node.js 20 (obsoleto) | `checkout` v6, `setup-node` v6 y `download-artifact` v7, fijadas a SHA |
 
 ---
@@ -259,7 +261,7 @@ npm run install:all
 npm run dev                 # backend :3000 + frontend :5173
 ```
 
-Producción: `npm run build` y `NODE_ENV=production node backend/server.js` (el backend sirve también el frontend compilado).
+Producción: `npm run build:prod` y `NODE_ENV=production npm start` (arranca `server.js` de la raíz; el backend sirve también el frontend compilado).
 
 Comandos útiles: `npm run lint`, `npm run test`, `npm run audit`.
 
