@@ -189,7 +189,7 @@ Validado en el servidor: el partido debe ser un partido próximo real del club y
 | Validación | zod en todos los body/params/query (`.strict()` bloquea campos extra); IDs de club y liga contra el catálogo. |
 | Autorización | Todas las rutas de datos requieren token. |
 | Errores | El manejador global nunca devuelve stack ni mensajes internos. |
-| Cabeceras | helmet (CSP, HSTS, nosniff, frame-ancestors none), sin `X-Powered-By`. |
+| Cabeceras | helmet: CSP sin comodines ni `unsafe-inline` (imágenes solo del propio sitio y de `*.espncdn.com`; fuentes servidas localmente), HSTS, nosniff, frame-ancestors none, COEP `credentialless` y `Permissions-Policy` que desactiva cámara, micrófono, ubicación, pagos y USB. Sin `X-Powered-By`. |
 | CORS | Solo el origen del frontend. |
 | Rate limiting | 10 intentos de auth / 15 min por IP; 120 peticiones/min en la API. |
 | XSS | React escapa el contenido; no se usa `dangerouslySetInnerHTML` (regla ESLint); enlaces externos solo `https` con `rel="noopener noreferrer"`. |
@@ -205,7 +205,7 @@ npm run test:e2e      # flujo completo contra MongoDB real (requiere MONGO_URI)
 npm run test:coverage --prefix backend
 ```
 
-- **Backend: 109 pruebas** unitarias y de API (Supertest). Las de API usan ESPN y MongoDB simulados, por lo que corren sin red. Cobertura ≈ 88 % de líneas.
+- **Backend: 116 pruebas** unitarias y de API (Supertest). Las de API usan ESPN y MongoDB simulados, por lo que corren sin red. Cobertura ≈ 88 % de líneas.
   - Lógica propia: Poisson (contra fórmulas analíticas), índice, alertas, Monte Carlo (reproducibilidad, probabilidades que suman 100 %, rangos), H2H, clasificación de partidos.
   - Integridad: rechazo de otra temporada, descarte de partidos de 2025-26, duplicados, datos faltantes.
   - Seguridad: contraseñas débiles rechazadas por el backend, bcrypt, cookies, rotación y reutilización de refresh token, token manipulado, JSON mal formado, mass assignment, cabeceras.
@@ -243,6 +243,11 @@ Además: **Dependabot** (`.github/dependabot.yml`) propone actualizaciones seman
 | Semgrep (primer run de CI) | 19 hallazgos: acciones de GitHub con etiqueta mutable y Dependabot sin periodo de espera | Acciones fijadas a SHA y `cooldown` de 7 días |
 | Dependabot | Actualizaciones de acciones (p. ej. `upload-artifact`) | PRs revisados y fusionados con CI en verde |
 | Despliegue | Detrás de un proxy, el rate limit usaba la IP del proxy para todos | `trust proxy` configurable (1 por defecto en producción) |
+| OWASP ZAP (DAST) | 3 medias: CSP con comodín en `img-src` y `style-src 'unsafe-inline'`; hoja de Google Fonts sin Subresource Integrity | CSP restringida a `'self'` + `*.espncdn.com`, sin `unsafe-inline`; fuentes servidas desde el propio sitio (`@fontsource`), sin recursos de terceros |
+| OWASP ZAP (DAST) | 2 bajas: faltaban `Cross-Origin-Embedder-Policy` y `Permissions-Policy` | COEP `credentialless` (no rompe las imágenes de ESPN) y `Permissions-Policy` restrictiva |
+| Despliegue (Hostinger) | El build fallaba con `vite: command not found` porque el hosting define `NODE_ENV=production` y omite las devDependencies | `build:prod` instala el frontend con `--include=dev` |
+| Despliegue (Hostinger) | Error 503: con Passenger el servidor no arrancaba (`require.main` no es el módulo) y las variables de entorno traían caracteres sobrantes | Arranque desde `server.js` de la raíz compatible con Passenger, limpieza de variables y conexión a MongoDB con reintentos |
+| GitHub Actions | Aviso: acciones sobre Node.js 20 (obsoleto) | `checkout` v6, `setup-node` v6 y `download-artifact` v7, fijadas a SHA |
 
 ---
 
@@ -256,7 +261,7 @@ npm run install:all
 npm run dev                 # backend :3000 + frontend :5173
 ```
 
-Producción: `npm run build` y `NODE_ENV=production node backend/server.js` (el backend sirve también el frontend compilado).
+Producción: `npm run build:prod` y `NODE_ENV=production npm start` (arranca `server.js` de la raíz; el backend sirve también el frontend compilado).
 
 Comandos útiles: `npm run lint`, `npm run test`, `npm run audit`.
 
