@@ -231,6 +231,21 @@ Comandos útiles: `npm run lint`, `npm run test`, `npm run audit`.
 
 ---
 
+## 8.1 Despliegue en producción (p. ej. Hostinger)
+
+La app se despliega como **una sola aplicación Node.js**: en producción el backend sirve también el frontend compilado.
+
+| Paso | Valor |
+|---|---|
+| Versión de Node.js | 20 o superior (recomendado 22) |
+| Comando de build | `npm run build:prod` |
+| Comando de inicio | `npm start` (ejecuta `node backend/server.js`) |
+| Base de datos | MongoDB Atlas (plan gratuito M0); el hosting compartido no incluye MongoDB |
+
+Variables de entorno obligatorias: `NODE_ENV=production`, `MONGO_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (≥ 32 caracteres), `FRONTEND_URL=https://tu-dominio`. Opcional: `TRUST_PROXY` (por defecto 1 en producción, necesario detrás del proxy del hosting para que el límite de peticiones sea por usuario). `PORT` normalmente lo asigna el hosting.
+
+En Atlas hay que permitir la IP del servidor en *Network Access*. Sin HTTPS la cookie de sesión (`Secure`) no se envía: el dominio debe tener SSL activo.
+
 ## 9. Limitaciones
 
 - **Fuente no oficial:** la API de ESPN es pública pero no documentada; puede cambiar su formato. Los normalizadores validan el formato y la app degrada con mensajes claros.

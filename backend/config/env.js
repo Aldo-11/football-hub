@@ -27,6 +27,20 @@ const resolveSecret = (name) => {
   return crypto.randomBytes(48).toString('hex');
 };
 
+/**
+ * Número de proxies delante de la app (Hostinger, Nginx, Cloudflare…).
+ * Necesario para que Express obtenga la IP real del cliente y el límite de
+ * peticiones sea por usuario y no global. Por defecto: 1 en producción.
+ */
+const resolveTrustProxy = () => {
+  const v = process.env.TRUST_PROXY;
+  if (v === undefined || v === '') return isProduction ? 1 : false;
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  const n = parseInt(v, 10);
+  return Number.isInteger(n) ? n : v;
+};
+
 const config = {
   port: parseInt(process.env.PORT, 10) || 3000,
   nodeEnv,
@@ -39,7 +53,8 @@ const config = {
   jwtRefreshExpiresIn: '7d',
   refreshCookieMaxAgeMs: 7 * 24 * 60 * 60 * 1000,
   bcryptRounds: 12,
-  enableCron: process.env.ENABLE_CRON !== 'false'
+  enableCron: process.env.ENABLE_CRON !== 'false',
+  trustProxy: resolveTrustProxy()
 };
 
 module.exports = config;
