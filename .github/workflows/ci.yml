@@ -22,7 +22,7 @@ jobs:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { fetch-depth: 0 }
       - name: gitleaks
         run: |
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: backend } }
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm, cache-dependency-path: backend/package-lock.json }
       - run: npm ci
@@ -68,7 +68,7 @@ jobs:
     env:
       MONGO_URI: mongodb://localhost:27017/footballhub_e2e
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm, cache-dependency-path: backend/package-lock.json }
       - run: npm ci
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm, cache-dependency-path: frontend/package-lock.json }
       - run: npm ci
@@ -103,7 +103,7 @@ jobs:
     name: Dependency audit (npm audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with: { node-version: '${{ env.NODE_VERSION }}' }
       - run: npm audit --audit-level=high
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     container: { image: semgrep/semgrep }
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: semgrep scan --config p/javascript --config p/nodejs --config p/react --config p/owasp-top-ten --error --metrics=off --exclude node_modules --exclude '**/tests/**'
 
   # 7. DAST: la app compilada se levanta y OWASP ZAP la ataca (baseline)
@@ -136,7 +136,7 @@ jobs:
       MONGO_URI: mongodb://localhost:27017/footballhub_dast
       FRONTEND_URL: http://localhost:3000
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with: { node-version: '${{ env.NODE_VERSION }}' }
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
