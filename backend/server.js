@@ -98,9 +98,13 @@ app.use((err, req, res, next) => {
   return res.status(500).json({ error: 'Error interno del servidor', code: 'INTERNAL_ERROR' });
 });
 
+let server = null;
+
 const startServer = () => {
+  // Idempotente: puede llamarse desde server.js de la raíz y desde este archivo
+  if (server) return server;
   // El servidor escucha de inmediato; MongoDB se conecta (y reintenta) en segundo plano
-  const server = app.listen(config.port, () => {
+  server = app.listen(config.port, () => {
     logger.info(`Football Hub escuchando en el puerto ${config.port} [${config.nodeEnv}]`);
   });
   connectWithRetry();
@@ -108,7 +112,10 @@ const startServer = () => {
   return server;
 };
 
-if (require.main === module) {
+// Arranca si se ejecuta directamente (node backend/server.js) o si lo carga
+// Phusion Passenger, el gestor de apps Node de hostings como Hostinger
+// (con Passenger, require.main no es este archivo).
+if (require.main === module || typeof globalThis.PhusionPassenger !== 'undefined') {
   startServer();
 }
 

@@ -5,7 +5,16 @@ const dotenv = require('dotenv');
 // Cargar .env desde la raíz del proyecto (nunca se versiona; ver .env.example)
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const nodeEnv = process.env.NODE_ENV || 'development';
+/**
+ * Limpia valores pegados en paneles de hosting: espacios y comillas
+ * sobrantes al inicio o al final (p. ej. `...w=majority"`).
+ */
+const clean = (value) => (typeof value === 'string'
+  ? value.trim().replace(/^["'\s]+|["'\s]+$/g, '')
+  : value);
+const cleanUrl = (value) => (clean(value) || '').replace(/\/+$/, '') || undefined;
+
+const nodeEnv = clean(process.env.NODE_ENV) || 'development';
 const isProduction = nodeEnv === 'production';
 
 /**
@@ -15,7 +24,7 @@ const isProduction = nodeEnv === 'production';
  * escrito en el código.
  */
 const resolveSecret = (name) => {
-  const value = process.env[name];
+  const value = clean(process.env[name]);
   if (value && value.length >= 32) return value;
   if (isProduction) {
     throw new Error(`${name} debe definirse con al menos 32 caracteres en producción.`);
@@ -45,8 +54,8 @@ const config = {
   port: parseInt(process.env.PORT, 10) || 3000,
   nodeEnv,
   isProduction,
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
-  mongoUri: process.env.MONGO_URI,
+  frontendUrl: cleanUrl(process.env.FRONTEND_URL) || 'http://localhost:5173',
+  mongoUri: clean(process.env.MONGO_URI) || undefined,
   jwtAccessSecret: resolveSecret('JWT_ACCESS_SECRET'),
   jwtRefreshSecret: resolveSecret('JWT_REFRESH_SECRET'),
   jwtAccessExpiresIn: '15m',
@@ -58,3 +67,5 @@ const config = {
 };
 
 module.exports = config;
+module.exports.clean = clean;
+module.exports.cleanUrl = cleanUrl;
