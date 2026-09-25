@@ -72,7 +72,7 @@ export const App = () => {
       <footer className="border-t border-hairline bg-surface py-4 text-center text-[11px] font-mono text-muted">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1">
           <span>Football Hub · proyecto académico · temporada en curso</span>
-          <span>Datos deportivos: ESPN · Análisis, modelos y alertas: Football Hub</span>
+          <span>Datos deportivos: ESPN · Análisis, modelos y puntos clave: Football Hub</span>
         </div>
       </footer>
     </div>

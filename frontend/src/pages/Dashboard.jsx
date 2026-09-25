@@ -30,13 +30,22 @@ export const Dashboard = () => {
   const prediction = useApi(targetId ? `/clubs/${club.id}/prediction` : null, targetId ? { fixtureId: targetId } : undefined);
 
   const upcoming = matches.data?.upcoming || [];
+  // El encabezado muestra el partido elegido para el pronóstico (o el próximo)
+  const headerMatch = upcoming.find((m) => m.fixtureId === targetId) || next;
   const past = matches.data?.past || [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {matches.loading && <Card><Loading label="Cargando partidos…" /></Card>}
       {matches.error && <Card><ErrorState error={matches.error} onRetry={matches.reload} title="No se pudieron cargar los partidos" /></Card>}
-      {matches.data && <MatchdayHeader match={next} club={club} />}
+      {matches.data && (
+        <MatchdayHeader
+          match={headerMatch}
+          club={club}
+          isNext={!headerMatch || headerMatch.fixtureId === next?.fixtureId}
+          onBackToNext={() => setFocusedId(null)}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-7 space-y-6">

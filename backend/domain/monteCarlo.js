@@ -131,7 +131,10 @@ const simulateSeason = (standings, fixtures, options = {}) => {
       },
       positionDistribution: counts.map(pct)
     };
-  }).sort((a, b) => a.averagePosition - b.averagePosition);
+  })
+    .sort((a, b) => a.averagePosition - b.averagePosition || b.expectedPoints - a.expectedPoints)
+    // Posición proyectada: orden final según la posición media en todas las simulaciones
+    .map((t, i) => ({ ...t, projectedPosition: i + 1 }));
 
   const expectedRemaining = standings.reduce((acc, r) => acc + (2 * (n - 1) - r.playedGames), 0) / 2;
 

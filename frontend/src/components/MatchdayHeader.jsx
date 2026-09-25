@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Clock, MapPin } from 'lucide-react';
+import { Calendar, Clock, MapPin, Undo2 } from 'lucide-react';
 import { Crest, Card } from './ui';
 import { formatMatchDate, formatTime, timeZoneName } from '../utils/dates';
 
@@ -13,8 +13,8 @@ const TeamSide = ({ team, isMine, align }) => (
   </div>
 );
 
-/** Próximo partido del club seleccionado. */
-export const MatchdayHeader = ({ match, club }) => {
+/** Próximo partido del club, o el partido elegido para ver su pronóstico. */
+export const MatchdayHeader = ({ match, club, isNext = true, onBackToNext }) => {
   if (!match) {
     return (
       <Card className="p-6 text-center">
@@ -29,12 +29,19 @@ export const MatchdayHeader = ({ match, club }) => {
   const isAwayMine = match.awayTeam.espnId === club?.espnId;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className={`overflow-hidden ${isNext ? '' : 'border-led/70'}`}>
       <div className="border-b border-hairline px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono uppercase text-muted bg-pitch/50">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-led animate-pulse" aria-hidden="true" />
-          <span className="text-main font-semibold tracking-wider">Próximo partido</span>
+          <span className={`font-semibold tracking-wider ${isNext ? 'text-main' : 'text-pitch bg-led px-1.5'}`}>
+            {isNext ? 'Próximo partido' : 'Partido seleccionado'}
+          </span>
           <span className="text-led font-semibold">{match.competition}</span>
+          {!isNext && onBackToNext && (
+            <button onClick={onBackToNext} className="flex items-center gap-1 px-2 py-0.5 border border-hairline text-muted hover:text-main hover:border-muted normal-case">
+              <Undo2 className="w-3 h-3" /> Volver al próximo partido
+            </button>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-led" />{formatMatchDate(match.utcDate)}</span>

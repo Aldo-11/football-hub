@@ -1,10 +1,10 @@
 # Football Hub
 
-Aplicación web para aficionados que siguen a uno de **10 clubes europeos**. Toma datos deportivos de una fuente externa (ESPN) y los **procesa con lógica propia**: clasifica partidos, calcula un índice de rendimiento, genera alertas, pronostica partidos con un modelo de Poisson, simula el resto de la temporada con Monte Carlo y compara clubes.
+Aplicación web para aficionados que siguen a uno de **10 clubes europeos**. Toma datos deportivos de una fuente externa (ESPN) y los **procesa con lógica propia**: clasifica partidos, calcula un índice de rendimiento, detecta puntos clave (alertas), pronostica partidos con un modelo de Poisson, simula el resto de la temporada con Monte Carlo y compara clubes.
 
 > **¿Qué hace la API y qué hace Football Hub?**
 > ESPN solo entrega datos crudos: clasificación, calendario, resultados, alineaciones, plantilla y noticias.
-> Todo lo demás lo calcula Football Hub en `backend/domain/`: el índice de rendimiento, las alertas, las probabilidades de Poisson, la simulación Monte Carlo, los indicadores H2H, la separación entre partidos pasados y futuros, las validaciones de temporada y la puntuación de la liga de pronósticos.
+> Todo lo demás lo calcula Football Hub en `backend/domain/`: el índice de rendimiento, los puntos clave (alertas), las probabilidades de Poisson, la simulación Monte Carlo, los indicadores H2H, la separación entre partidos pasados y futuros, las validaciones de temporada y la puntuación de la liga de pronósticos.
 
 ---
 
@@ -20,7 +20,7 @@ Aplicación web para aficionados que siguen a uno de **10 clubes europeos**. Tom
 |---|---|
 | Matchday | Próximo partido, pronóstico de Poisson, clasificación completa de la liga, partidos jugados/próximos, noticias |
 | Detalle de partido | Alineaciones, formación, cambios, estadísticas e incidencias **reales** (si la fuente las publica) |
-| Análisis del equipo | Índice de Rendimiento del Equipo, forma, local/visitante, consistencia, progresión, alertas |
+| Análisis del equipo | Índice de Rendimiento del Equipo, forma, local/visitante, consistencia, progresión y «Puntos clave del equipo» |
 | Simulación | Monte Carlo del resto de la temporada de la liga del club |
 | H2H | Comparativa de dos clubes con 4 indicadores 0-100 |
 | Club | Historia breve y plantilla de la temporada |
@@ -111,7 +111,9 @@ backend (Node.js + Express) ── BFF
 **Índice = 0.35·Puntos + 0.25·Ataque + 0.25·Defensa + 0.15·Forma.** Lectura: 0-39 bajo, 40-69 medio, 70-100 alto.
 Además: rendimiento local/visitante, **consistencia** = 100 × (1 − σ(puntos por partido)/1.5) y **proyección lineal** = PPG × partidos totales (se presenta como proyección, no como meta).
 
-### 4.3 Alertas (`domain/alerts.js`)
+### 4.3 Puntos clave del equipo (`domain/alerts.js`)
+En la interfaz se llaman **«Puntos clave del equipo»**: avisos que se generan solos cuando los números del equipo cumplen una regla. Verde = positivo, rojo = a vigilar, gris = informativo.
+
 | Alerta | Regla |
 |---|---|
 | Mala racha | ≥ 3 partidos seguidos sin ganar |
@@ -122,7 +124,7 @@ Además: rendimiento local/visitante, **consistencia** = 100 × (1 − σ(puntos
 | Diferencia local-visitante | \|PPG local − PPG visitante\| ≥ 1.0 (≥ 2 partidos de cada tipo) |
 | Muestra pequeña | menos de 5 partidos |
 
-Cada alerta muestra su regla en la interfaz. Las "lecturas descriptivas" se derivan de las alertas activas.
+Cada punto clave muestra la regla que lo activó («Se activa cuando: …»). El bloque «En resumen» se deriva de los puntos activos.
 
 ### 4.4 Modelo de Poisson (`domain/poisson.js`)
 1. Fuerza con suavizado (K = 3 partidos "promedio" ficticios para no exagerar con pocos datos):
