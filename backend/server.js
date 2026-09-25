@@ -16,6 +16,7 @@ const app = express();
 
 // 1. Cabeceras de seguridad (CSP, HSTS, X-Content-Type-Options, etc.)
 app.disable('x-powered-by');
+app.set('trust proxy', config.trustProxy);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {

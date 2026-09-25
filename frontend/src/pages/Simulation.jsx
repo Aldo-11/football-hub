@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dices, Play, Minus, Plus, Shuffle, ArrowUp, ArrowDown } from 'lucide-react';
+import { Dices, Play, ChevronDown, Minus, Plus, Shuffle, ArrowUp, ArrowDown } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useClub } from '../context/ClubContext';
 import { Card, Loading, ErrorState, PageHeader, Crest, InfoNote, DataMeta } from '../components/ui';
@@ -77,12 +77,18 @@ export const Simulation = () => {
         </form>
       </Card>
 
-      <Card className="p-4 space-y-2 text-xs text-muted leading-relaxed">
-        <h2 className="text-[11px] font-mono uppercase text-main">¿Cómo funciona y por qué el orden casi no cambia?</h2>
+      {/* Explicación plegada por defecto para no ocupar espacio */}
+      <details className="group border border-hairline bg-surface text-xs text-muted leading-relaxed">
+        <summary className="flex items-center justify-between gap-2 px-4 py-3 cursor-pointer list-none select-none hover:bg-surface-hover [&::-webkit-details-marker]:hidden">
+          <span className="text-[11px] font-mono uppercase text-main">¿Cómo funciona y por qué el orden casi no cambia?</span>
+          <ChevronDown className="w-4 h-4 text-muted flex-shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="px-4 pb-4 space-y-2">
         <p><b className="text-main">Simulaciones:</b> cuántas veces se juega el resto de la temporada. Más simulaciones no cambian quién es favorito, solo hacen más <b className="text-main">precisos</b> los porcentajes: con 1 000 el margen de error es de ±{marginOfError(1000)} puntos; con 20 000, de ±{marginOfError(20000)}.</p>
         <p><b className="text-main">Semilla:</b> fija la secuencia de números aleatorios. Con la misma semilla el resultado es idéntico, lo que permite repetir y comprobar un cálculo. Cambia la semilla (o usa «Semilla aleatoria») para ver otra serie de simulaciones.</p>
         <p><b className="text-main">Por qué el líder casi siempre es el mismo:</b> la simulación parte de la tabla y de la fuerza actual de cada equipo. Un equipo claramente superior termina primero en la mayoría de simulaciones, y eso no cambia con más repeticiones: es lo que el modelo espera. Solo los equipos muy parejos (con posiciones medias casi iguales) pueden intercambiarse entre una semilla y otra. Los resultados cambian de verdad cuando se juegan partidos reales y se actualiza la clasificación.</p>
-      </Card>
+        </div>
+      </details>
 
       {loading && <Card><Loading label="Simulando temporada…" /></Card>}
       {error && <Card><ErrorState error={error} onRetry={reload} /></Card>}
