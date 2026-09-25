@@ -272,12 +272,14 @@ La app se despliega como **una sola aplicación Node.js**: en producción el bac
 |---|---|
 | Versión de Node.js | 20 o superior (recomendado 22) |
 | Comando de build | `npm run build:prod` (instala las herramientas de compilación del frontend aunque el hosting defina `NODE_ENV=production`) |
-| Comando de inicio | `npm start` (ejecuta `node backend/server.js`) |
+| Comando de inicio / archivo de entrada | `npm start` o el archivo `server.js` de la raíz |
 | Base de datos | MongoDB Atlas (plan gratuito M0); el hosting compartido no incluye MongoDB |
 
 Variables de entorno obligatorias: `NODE_ENV=production`, `MONGO_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (≥ 32 caracteres), `FRONTEND_URL=https://tu-dominio`. Opcional: `TRUST_PROXY` (por defecto 1 en producción, necesario detrás del proxy del hosting para que el límite de peticiones sea por usuario). `PORT` normalmente lo asigna el hosting.
 
 En Atlas hay que permitir la IP del servidor en *Network Access*. Sin HTTPS la cookie de sesión (`Secure`) no se envía: el dominio debe tener SSL activo.
+
+**Diagnóstico.** El servidor arranca aunque MongoDB falle (reintenta cada 15 s). `GET /api/health` responde `200` si todo está bien o `503` con `database.problem` indicando la causa (falta `MONGO_URI`, usuario/contraseña incorrectos o IP no permitida en Atlas). Si el sitio muestra "503 Service Unavailable" del propio hosting, el proceso no llegó a arrancar: revisa los logs de la aplicación (p. ej. faltan `JWT_ACCESS_SECRET`/`JWT_REFRESH_SECRET`, obligatorios en producción).
 
 ## 9. Limitaciones
 

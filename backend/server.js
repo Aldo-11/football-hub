@@ -5,7 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const config = require('./config/env');
-const connectDB = require('./config/db');
+const { connectWithRetry, dbStatus } = require('./config/db');
 const logger = require('./config/logger');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { AppError } = require('./utils/errors');
@@ -54,7 +54,15 @@ app.use((req, res, next) => {
 });
 
 // 6. Salud
-app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/api/health', (req, res) => {
+  const db = dbStatus();
+  res.status(db.state === 'conectada' ? 200 : 503).json({
+    status: db.state === 'conectada' ? 'ok' : 'degraded',
+    database: db,
+    environment: config.nodeEnv,
+    timestamp: new Date().toISOString()
+  });
+});
 app.get('/api/health/football', footballController.footballHealth);
 
 // 7. Rutas
@@ -66,9 +74,9 @@ app.use('/api/leaderboard', require('./routes/leaderboardRoutes'));
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Ruta no encontrada', code: 'NOT_FOUND' }));
 
-// 8. En producción el backend sirve también el frontend compilado
+// 8. Si existe el frontend compilado (npm run build), el backend también lo sirve
 const distDir = path.resolve(__dirname, '../frontend/dist');
-if (config.isProduction && fs.existsSync(distDir)) {
+if (fs.existsSync(path.join(distDir, 'index.html'))) {
   app.use(express.static(distDir, { index: false, maxAge: '1h' }));
   app.get('*', (req, res) => res.sendFile(path.join(distDir, 'index.html')));
 }
@@ -90,17 +98,14 @@ app.use((err, req, res, next) => {
   return res.status(500).json({ error: 'Error interno del servidor', code: 'INTERNAL_ERROR' });
 });
 
-const startServer = async () => {
-  try {
-    await connectDB();
-    if (config.enableCron) startPredictionsCron();
-    return app.listen(config.port, () => {
-      logger.info(`Football Hub backend en http://localhost:${config.port} [${config.nodeEnv}]`);
-    });
-  } catch (error) {
-    logger.error(`Error fatal al iniciar el servidor: ${error.message}`);
-    process.exit(1);
-  }
+const startServer = () => {
+  // El servidor escucha de inmediato; MongoDB se conecta (y reintenta) en segundo plano
+  const server = app.listen(config.port, () => {
+    logger.info(`Football Hub escuchando en el puerto ${config.port} [${config.nodeEnv}]`);
+  });
+  connectWithRetry();
+  if (config.enableCron) startPredictionsCron();
+  return server;
 };
 
 if (require.main === module) {
