@@ -42,6 +42,25 @@ describe('Monte Carlo', () => {
     expect(byId.A.pointsRange.p90).toBeGreaterThan(byId.A.pointsRange.p10);
   });
 
+  test('posición proyectada 1..N ordenada por posición media', () => {
+    const r = simulateSeason(table, fixtures, { simulations: 500, seed: 11, zones });
+    expect(r.teams.map((t) => t.projectedPosition)).toEqual([1, 2, 3, 4]);
+    r.teams.slice(1).forEach((t, i) => expect(t.averagePosition).toBeGreaterThanOrEqual(r.teams[i].averagePosition));
+  });
+
+  test('más simulaciones mantienen al líder y al colista claros; solo pueden alternar equipos muy parejos', () => {
+    const small = simulateSeason(table, fixtures, { simulations: 2000, seed: 1, zones });
+    const big = simulateSeason(table, fixtures, { simulations: 20000, seed: 2, zones });
+    expect(big.teams[0].team.espnId).toBe(small.teams[0].team.espnId);
+    expect(big.teams[3].team.espnId).toBe(small.teams[3].team.espnId);
+    // B y C (mismos puntos hoy) terminan con posiciones medias casi iguales
+    const avg = (r, id) => r.teams.find((t) => t.team.espnId === id).averagePosition;
+    expect(Math.abs(avg(big, 'B') - avg(big, 'C'))).toBeLessThan(0.5);
+    // La probabilidad de título converge: diferencia pequeña entre 2 000 y 20 000 simulaciones
+    const title = (r, id) => r.teams.find((t) => t.team.espnId === id).probabilities.title;
+    expect(Math.abs(title(big, 'A') - title(small, 'A'))).toBeLessThan(4);
+  });
+
   test('puntos esperados ≥ puntos actuales y ≤ máximo alcanzable', () => {
     const r = simulateSeason(table, fixtures, { simulations: 500, seed: 5, zones });
     r.teams.forEach((t) => {

@@ -57,7 +57,11 @@ const SEVERITY = {
 
 const AlertsCard = ({ alerts, recommendations }) => (
   <Card className="p-5 space-y-3">
-    <SectionTitle icon={Bell} title="Alertas automáticas" right={`${alerts.length} activas`} />
+    <SectionTitle icon={Bell} title="Puntos clave del equipo" right={`${alerts.length} detectados`} />
+    <p className="text-[11px] text-muted leading-relaxed">
+      Football Hub revisa los números del equipo y destaca lo que se sale de lo normal: rachas, cambios de rendimiento y si ataca o defiende
+      mejor o peor que la media de su liga. Verde = aspecto positivo, rojo = aspecto a vigilar, gris = dato informativo. Cada punto indica la regla que lo activó.
+    </p>
     <ul className="space-y-2">
       {alerts.map((a) => {
         const S = SEVERITY[a.severity];
@@ -68,7 +72,7 @@ const AlertsCard = ({ alerts, recommendations }) => (
               <div>
                 <p className="text-main font-semibold">{a.title}</p>
                 <p className="text-muted">{a.detail}</p>
-                <p className="text-[10px] font-mono text-muted mt-1">Regla: {a.rule}</p>
+                <p className="text-[10px] font-mono text-muted mt-1">Se activa cuando: {a.rule}</p>
               </div>
             </div>
           </li>
@@ -77,7 +81,7 @@ const AlertsCard = ({ alerts, recommendations }) => (
     </ul>
     {recommendations.length > 0 && (
       <div className="pt-2 border-t border-hairline">
-        <span className="text-[10px] font-mono uppercase text-muted">Lectura descriptiva</span>
+        <span className="text-[10px] font-mono uppercase text-muted">En resumen</span>
         <ul className="list-disc list-inside text-xs text-main space-y-1 mt-1">
           {recommendations.map((r) => <li key={r.alertId}>{r.text}</li>)}
         </ul>
@@ -129,7 +133,7 @@ export const Analysis = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <PageHeader icon={BarChart3} title={`Análisis del equipo · ${club.shortName}`}
-        subtitle="Football Hub transforma los resultados de liga de la temporada en métricas propias: índice de rendimiento, forma, rendimiento local/visitante, consistencia y alertas basadas en reglas explícitas."
+        subtitle="Football Hub transforma los resultados de liga de la temporada en métricas propias: índice de rendimiento, forma, rendimiento local/visitante, consistencia y puntos clave detectados con reglas explícitas."
         right={data && <DataMeta meta={data.meta} />} />
 
       {loading && <Card><Loading label="Analizando partidos…" /></Card>}
