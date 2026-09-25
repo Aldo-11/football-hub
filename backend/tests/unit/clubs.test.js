@@ -29,3 +29,16 @@ describe('Diagnóstico de conexión a MongoDB (sin datos internos)', () => {
     expect(classifyError(msg)).toBe(expected);
   });
 });
+
+describe('Limpieza de variables de entorno pegadas en el hosting', () => {
+  const { clean, cleanUrl } = require('../../config/env');
+  test('quita comillas y espacios sobrantes', () => {
+    expect(clean('mongodb+srv://u:p@c.mongodb.net/db?w=majority"')).toBe('mongodb+srv://u:p@c.mongodb.net/db?w=majority');
+    expect(clean('  "production" ')).toBe('production');
+    expect(clean(undefined)).toBeUndefined();
+  });
+  test('quita la barra final de las URLs', () => {
+    expect(cleanUrl('https://red-moose.hostingersite.com/')).toBe('https://red-moose.hostingersite.com');
+    expect(cleanUrl(undefined)).toBeUndefined();
+  });
+});
