@@ -271,7 +271,7 @@ La app se despliega como **una sola aplicación Node.js**: en producción el bac
 | Paso | Valor |
 |---|---|
 | Versión de Node.js | 20 o superior (recomendado 22) |
-| Comando de build | `npm run build:prod` |
+| Comando de build | `npm run build:prod` (instala las herramientas de compilación del frontend aunque el hosting defina `NODE_ENV=production`) |
 | Comando de inicio | `npm start` (ejecuta `node backend/server.js`) |
 | Base de datos | MongoDB Atlas (plan gratuito M0); el hosting compartido no incluye MongoDB |
 
