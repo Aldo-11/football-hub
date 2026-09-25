@@ -96,4 +96,15 @@ describe('API de autenticación', () => {
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['content-security-policy']).toContain("default-src 'self'");
   });
+
+  test('CSP sin comodines ni unsafe-inline, con Permissions-Policy y COEP', async () => {
+    const res = await request(app).get('/api/health');
+    const csp = res.headers['content-security-policy'];
+    expect(csp).toContain("img-src 'self' https://*.espncdn.com");
+    expect(csp).toContain("style-src 'self';");
+    expect(csp).not.toContain('unsafe-inline');
+    expect(csp).not.toMatch(/img-src[^;]*\s(https:|data:|\*)(\s|;)/);
+    expect(res.headers['permissions-policy']).toContain('camera=()');
+    expect(res.headers['cross-origin-embedder-policy']).toBe('credentialless');
+  });
 });

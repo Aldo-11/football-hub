@@ -17,19 +17,29 @@ const app = express();
 // 1. Cabeceras de seguridad (CSP, HSTS, X-Content-Type-Options, etc.)
 app.disable('x-powered-by');
 app.set('trust proxy', config.trustProxy);
+// CSP sin comodines ni 'unsafe-inline': fuentes y estilos se sirven desde el
+// propio sitio y las únicas imágenes externas son escudos y fotos de ESPN.
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'https://*.espncdn.com'],
+      styleSrc: ["'self'"],
+      fontSrc: ["'self'"],
       connectSrc: ["'self'"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"]
     }
-  }
+  },
+  // 'credentialless' aísla el documento sin romper las imágenes de ESPN,
+  // que no envían Cross-Origin-Resource-Policy.
+  crossOriginEmbedderPolicy: { policy: 'credentialless' }
 }));
+// Desactiva APIs del navegador que la app no usa.
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  next();
+});
 
 // 2. CORS restringido al origen del frontend
 app.use(cors({

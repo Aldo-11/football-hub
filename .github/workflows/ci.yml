@@ -22,7 +22,7 @@ jobs:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with: { fetch-depth: 0 }
       - name: gitleaks
         run: |
@@ -35,12 +35,20 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: backend } }
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm, cache-dependency-path: backend/package-lock.json }
       - run: npm ci
       - run: npm run lint
-      - run: npm run test:coverage -- --coverageReporters=text-summary --coverageReporters=lcov
+      - name: Tests (Jest + cobertura)
+        run: npm run test:coverage -- --coverageReporters=text-summary --coverageReporters=lcov 2>&1 | tee test-output.txt
+      - name: Resumen de pruebas
+        if: always()
+        run: |
+          {
+            echo '### Backend (Jest)'
+            sed 's/\x1b\[[0-9;]*m//g' test-output.txt | grep -E '^(Tests|Test Suites):|^(Statements|Lines) +:' | sed 's/^/- /'
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with: { name: backend-coverage, path: backend/coverage/lcov-report }
 
@@ -60,8 +68,8 @@ jobs:
     env:
       MONGO_URI: mongodb://localhost:27017/footballhub_e2e
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm, cache-dependency-path: backend/package-lock.json }
       - run: npm ci
       - run: npm run test:e2e
@@ -72,12 +80,20 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with: { node-version: '${{ env.NODE_VERSION }}', cache: npm, cache-dependency-path: frontend/package-lock.json }
       - run: npm ci
       - run: npm run lint
-      - run: npm test
+      - name: Tests (Vitest)
+        run: npm test 2>&1 | tee test-output.txt
+      - name: Resumen de pruebas
+        if: always()
+        run: |
+          {
+            echo '### Frontend (Vitest)'
+            sed 's/\x1b\[[0-9;]*m//g' test-output.txt | grep -E '^ *(Test Files|Tests) ' | sed 's/^ */- /'
+          } >> "$GITHUB_STEP_SUMMARY"
       - run: npm run build
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with: { name: frontend-dist, path: frontend/dist }
@@ -87,8 +103,8 @@ jobs:
     name: Dependency audit (npm audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with: { node-version: '${{ env.NODE_VERSION }}' }
       - run: npm audit --audit-level=high
       - run: npm audit --audit-level=high
@@ -102,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     container: { image: semgrep/semgrep }
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - run: semgrep scan --config p/javascript --config p/nodejs --config p/react --config p/owasp-top-ten --error --metrics=off --exclude node_modules --exclude '**/tests/**'
 
   # 7. DAST: la app compilada se levanta y OWASP ZAP la ataca (baseline)
@@ -120,10 +136,10 @@ jobs:
       MONGO_URI: mongodb://localhost:27017/footballhub_dast
       FRONTEND_URL: http://localhost:3000
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with: { node-version: '${{ env.NODE_VERSION }}' }
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with: { name: frontend-dist, path: frontend/dist }
       - run: npm ci --omit=dev
         working-directory: backend
@@ -138,6 +154,13 @@ jobs:
           mkdir -p zap && chmod 777 zap
           docker run --rm --network host -v "$PWD/zap:/zap/wrk" ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py -t http://localhost:3000 -r zap-report.html -J zap-report.json -I
+      - name: Resumen de ZAP
+        if: always()
+        run: |
+          {
+            echo '### OWASP ZAP (alertas por nivel de riesgo)'
+            jq -r '[.site[].alerts[].riskdesc | split(" ")[0]] | group_by(.) | map("- \(.[0]): \(length)") | .[]' zap/zap-report.json 2>/dev/null || echo '- Sin reporte'
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with: { name: zap-report, path: zap }
